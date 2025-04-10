@@ -35,3 +35,13 @@ https://discuss.pytorch.org/t/how-to-extract-features-of-an-image-from-a-trained
 https://cs231n.github.io/neural-networks-3/ 神经网络
 
 https://nbviewer.org/github/BVLC/caffe/blob/master/examples/00-classification.ipynb caffe 分类
+
+https://blog.csdn.net/qq_27825451/article/details/90551513 使用 torch.nn.Sequential()一种整合各层的方法，同时可用，from collections import OrderDict, 一种带有时序信息的字典 使用 del 去删除
+https://wenku.csdn.net/column/7asc6vxrxh
+OrderDict
+
+https://blog.csdn.net/coolend/article/details/102618637
+numpy 创建一个视图 view(),reshape(x,y)，无法隔离 与 copy 新建一个完全的 base 互相隔离
+
+https://blog.csdn.net/weixin_44544687/article/details/124703861
+深度学习中的 Tensor 数据格式（N,C,H,W） 很有意义
