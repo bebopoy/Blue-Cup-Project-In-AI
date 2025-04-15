@@ -24,7 +24,7 @@ diction ={}
 with open(filepath, 'r',encoding='utf-8') as f:
     for line in f:
         line.strip() #删除回车，“str”
-        words = line.strip().split('r') #删除回车，以','划分,"list"
+        words = line.strip().split('，') #删除回车，以','划分,"list"
         for word in words:
             diction[word]=words
 return diction
@@ -195,6 +195,7 @@ generated_text = tensorflow_model.predict(start_text)
 文本生成模型，包含： 输入文本（word2idx）转 idx, idx 作为推理输入，生成输出的 key_idx，经(idx2word)转 word，将 word 增加到生成输出后，将 key_idx np.append 在 idx 之后，继续推理，但是祛除第一位的元素,循环步骤
 
 ~~在我看来： 对 input_seq[1:]的操作因人而异，不一定如此 。。。错误的~~
+
 **为什么必须去掉第一个元素？**
 
 - 如果不删除第一个元素，序列长度会不断增长，这与模型训练时的固定长度输入不符
@@ -235,7 +236,9 @@ def generate_text(start_sequence, max_length):
 
 ### 普通 np 实现，以 ndarray 代图片
 
-对于 index 可大胆的使用 np.range() 【左闭右开】 1.缩放/插值
+对于 index 可大胆的使用 np.range() 【左闭右开】
+
+1.缩放/插值
 
 ```python
 old_weight, old_width = image.shape
