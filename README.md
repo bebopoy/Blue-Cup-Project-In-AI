@@ -62,6 +62,21 @@ output = model.predict(inputs)
 
 ```
 
+2.pickle: 保存与取用
+
+```python
+写~
+model = LogisticRegression()
+    model.fit(x, y)
+
+    with open(classifier_path,'wb') as file:
+        pickle.dump(model, file)
+读~
+    with open(classifier_path, 'rb') as file:
+        trained_model = pickle.load(file)
+output = trained_model.predict(x_test)
+```
+
 2.torch: 加载与推理
 情况 1：
 
@@ -102,6 +117,47 @@ model_object.load_state_dict(state_dict = state_dict)
 
 ### csv 文件
 
+pd.read_csv(csv_path)
+使用 sum 统计数目 sum((y_test==1)&(y_pred==1))
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+import numpy as np
+
+def standardization(X):
+    mean = X.mean(axis=0)
+    std = X.std(axis=0)
+    X = (X-mean)/std
+    return X
+
+def f1_score(y_test, y_pred):
+    #TODO
+    true_positives = sum((y_test == 1) & (y_pred == 1))
+    false_positives = sum((y_test == 0) & (y_pred == 1))
+    false_negatives = sum((y_test == 1) & (y_pred == 0))
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) else 0
+    recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) else 0
+
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) else 0
+    return f1
+
+def train():
+    file_path ='xx.csv'
+    data = pd.read_csv(file_path)
+    X = data.drop('target',axis=1).values
+    y = data['target'.values]
+    X = standardization(X)
+    X_train, X_test, y_train, y_test =tran_test_split(X, y,test_size=0.2, random_state=42)
+    model = SVC()
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict()
+    return (X_train, X_test),(y_train, y_test),y_pred,model
+```
+
 ### torch 权重
 
 加载 torch 模型权重，并且推理与平均计时
@@ -126,6 +182,7 @@ def resnet_predict_time(input, model_path, n):
 
 加载.onnx 模型权重，并推理与计时
 
+onnxruntime 推理的输入是{}
 神奇的是：onnx.load(onnx_model_path)的方式无法推理，同 torch.load(onnx_model_path) 只是模型权重本身无法推理
 
 - onnx: 需要使用 onnxruntime ,onnxruntime.InferenceSession(model_path)
@@ -144,7 +201,7 @@ onnx.checker.check_model(onnx_model)
 1 计时器引入
 
 ```python
-import torch.benchmark as benchmark
+import torch.utils.benchmark as benchmark
 import onnxruntime
 
 def reset_predict_time(input, model_path, n):
@@ -228,9 +285,65 @@ def generate_text(start_sequence, max_length):
     return generate_index
 ```
 
+### gensim 模型
+
+训练与 torch 相同
+
+```python
+from gensim.models import Word2Vec
+def train_w2v_model(train_data, model_path="./word2vec_model.bin"):
+    #TODO
+    model = Word2Vec(train_data, vector_size=100, window=5, min_count=1, workers=4)
+    model.save(model_path)
+# 词库
+def calculate_similarity(word1, word2, model_path="./word2vec_model.bin"):
+    #TODO
+    model = Word2Vec.load(model_path)
+    if word1 not in model.wv.key_to_index or word2 not in model.wv.key_to_index:
+        return None
+    similarity = model.wv.similarity(word1, word2)
+    return similarity
+```
+
 ## 数学计算实现
 
+### numpy
+
+import numpy as np
+
+- 平均数
+  np.mean(axis=-1) -1 是最后一维
+- 标准差
+  np.std(axis=-1)
+- 方差
+  np.var(axis=-1)
+
 ### 范数
+
+### 关于统计的频率的计算
+
+从 words 中采集各种词的频率
+与总词数
+
+corpus 是由句子构成的总句子 list，在总句子中统计词频率
+与总句子数
+
+```python
+def calc_tfidf(words, corpus):
+    #TODO
+    word_counter = Counter(words)
+    tfidf = {}
+    total_docs = len(corpus)
+    for word in set(words):
+        tf = word_counter[word]/len(words)
+        doc_count = 0
+        for doc in corpus:
+            if word in doc:
+                doc_count += 1
+        idf = math.log(total_docs/(doc_count+1))
+        tfidf[wrod] = tf * idf
+    return tfidf
+```
 
 ### 矩阵
 
@@ -498,6 +611,67 @@ def sort_models(models):
     return sort_model
 ```
 
+sklearn 训练与检测全流程
+
+```python
+import jieba
+import pandas as pd
+import pickle
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+
+def load_dataset(file_path):
+    x, y = [], []
+    with open(file_path, "r", encoding='utf-8') as f:
+        for i in f.readlines():
+            i_list = i.strip().split(",")
+            x.append(i_list[2])
+            y.append(int(i_list[1]))
+    return x, y
+
+def preprocess_text(text):
+    words = jieba.lcut(text)
+    processed_text = " ".join(words)
+    return processed_text
+
+def fit_classifier(x, y, classifier_path='./classifier_model.pkl'):
+    classifier = MultinomialNB()
+    classifier.fit(x, y)
+    with open(classifier_path, 'wb') as file:
+        pickle.dump(classifier, file)
+
+def test_classifier(test_x, test_y, classifier_path='./classifier_model.pkl'):
+    with open(classifier_path, 'rb') as file:
+        classifier = pickle.load(file)
+    predictions = classifier.predict(test_x)
+    accuracy = accuracy_score(test_y, predictions)
+    return accuracy
+
+def main():
+    train_x, train_y = load_dataset('sentiment_analysis_train.txt')
+    test_x, test_y = load_dataset('sentiment_analysis_test.txt')
+    train_x = [preprocess_text(text) for text in train_x]
+    test_x = [preprocess_text(text) for text in test_x]
+
+    vectorizer = TfidfVectorizer(max_features=1000)
+    train_x_features = vectorizer.fit_transform(train_x)
+    test_x_features = vectorizer.transform(test_x)
+
+    fit_classifier(train_x_features, train_y)
+    acc = test_classifier(test_x_features, test_y)
+    print("Accuracy:", acc)
+
+if __name__ == '__main__':
+    main()
+```
+
 ### 量化
 
 量化 兼 分批次训练
@@ -649,6 +823,9 @@ lcut() 返回的是 List 列表，cut 返回的是一个生成器，但是通过
   搜索引擎方式
   data = jieba.lcut_for_search(sentence)
 
+让 List 中的词之间用空格连接，
+list_div = " ".join(List)
+
 ## word2idx 将词变为数字 嵌入
 
 中文嵌入与英文嵌入是相同的:
@@ -678,3 +855,61 @@ def tokens_to_ids(tokens, word2id, max_len=10, unk='<unk>', pad='<pad>'):
 
     return ids
 ```
+
+## sklearn 分词器 vectorizer
+
+对于分词器的加载，以及使用 transform
+
+```python
+import numpy as np
+import tensorflow as tf
+import pickle
+import jieba
+
+def text_to_sequence(text):
+    #TODO
+    with open('vectorizer.pkl', 'rb') as file:
+        vectorizer = pickle.load(file)
+        vocab = vectorizer.vocabulary_
+    word2idx = {word: idx for idx, word in enumerate(vocab)}
+
+    words = jieba.lcut(text)  # 使用jieba进行中文分词处理
+    seq = [word2idx.get(word, 0) for word in words]  # 使用get方法获取索引，不存在的词使用0表示
+    seq2 = seq[:100] + [0] * (100 - len(seq))  # 填充到固定长度
+    seq3 = seq[:50] + [0] * (50 - len(seq))  # 填充到固定长度
+    seq1 = vectorizer.transform([' '.join(words)])
+    return seq1, seq2, seq3
+
+def predict_text(seq1, seq2, seq3):
+    #TODO
+    # 加载分类模型1
+    with open('classifier_model1.pkl', 'rb') as file:
+        classifier1 = pickle.load(file)
+    # 加载分类模型2
+    classifier2 = tf.keras.models.load_model('classifier_model2.h5')
+    # 加载分类模型3
+    classifier3 = tf.keras.models.load_model('classifier_model3.h5')
+
+    pred1 = classifier1.predict(seq1)[0] # 获取类别为1的概率值
+
+    sequence2 = np.array([seq2])
+    pred2 = int(classifier2.predict(sequence2)[0][0]>= 0.5)
+    sequence3 = np.array([seq3])
+    pred3 = int(classifier3.predict(sequence3)[0][0]>= 0.5)
+    print(pred1,pred2,pred3)
+    votes = [pred1, pred2, pred3]
+    ensemble_pred = int(sum(votes) >= 2)  # 投票法，判定为1的个数大于等于2则预测为1，否则预测为0
+
+    return ensemble_pred
+
+def main():
+    input_text = "自由多么快乐."
+    seq1, seq2, seq3 = text_to_sequence(input_text)
+    prediction = predict_text(seq1, seq2, seq3)
+    print(f"Prediction: {prediction}")
+
+if __name__ == '__main__':
+    main()
+```
+
+## emmbedding
