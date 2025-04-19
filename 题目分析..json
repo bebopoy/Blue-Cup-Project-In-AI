@@ -1,0 +1,934 @@
+09 MLM 转换与推理
+介绍
+在自然语言处理领域中，“填空式（masked language modeling, MLM）”是一项常见且重要的预训练任务。在这类任务中，文本中会有特定的标记（如 [MASK]）用于替换原本的词语，模型需要根据上下文预测被隐藏的词汇。例如，对于一句话：“巴黎是[MASK]国的首都。”，模型应根据上下文和语言习惯预测出适当的词汇来填补 [MASK] 的位置，如“法”。
+
+本次任务的目标是将一个 PyTorch 预训练完成的 MLM 模型转换为 ONNX 格式，并使用转换后的 ONNX 模型对指定的含有 [MASK] 标记的句子进行推理，输出可能的词语填充结果。
+
+准备
+开始答题前，请确认当前目录即 /home/project/09 下包含以下文件和文件夹：
+
+bert-base-chinese/
+task.py
+其中：
+
+bert-base-chinese 模型的组成部分，该模型是 BERT（Bidirectional Encoder Representations from Transformers）在中文上的预训练版本。
+README.md: 模型的说明文档。
+config.json: BERT 模型的配置参数，如隐藏层大小、层数、注意力头的数量等。
+.gitattributes: Git 配置文件。
+pytorch_model.bin: 预训练权重的二进制文件。
+tokenizer.json: 分词器（Tokenizer）的状态，包含了将原始文本转化为模型输入所需的所有信息，如词汇表索引、特殊标记等。
+tokenizer_config.json: 分词器的配置选项，指定了分词规则、是否保留空白字符、未知标记的行为等。
+vocab.txt: 这是 BERT 模型的词汇表文件，每一行代表一个 token。
+模型使用方法如下：
+
+from transformers import AutoTokenizer, AutoModelWithLMHead
+from transformers import pipeline
+
+tokenizer = AutoTokenizer. from_pretrained ("/home/project/09/bert-base-chinese")
+model = AutoModelWithLMHead. from_pretrained ("/home/project/09/bert-base-chinese")
+
+fill_mask = pipeline("fill-mask", model=model, tokenizer=tokenizer)
+text = "巴黎是 [MASK] 国的首都。"
+result = fill_mask(text)
+print(result)
+
+task.py，是你后续答题过程中编写代码的地方。源代码运行方式如下：
+cd /home/project/09
+python task.py
+
+目标
+请按要求实现以下目标。
+
+目标 1：实现 convert 函数
+
+参数：
+model_path: 预训练模型的文件的绝对路径。
+tokenizer_path: 分词器的文件的绝对路径。
+onnx_path: 导出后 ONNX 模型的保存路径。
+功能：
+使用给定的 model_path 和 tokenizer_path 加载预训练语言模型及其分词器。
+将加载的模型转换并导出为 ONNX 格式文件至 onnx_path。
+导出过程中需要指定动态轴，以适配不同输入长度的序列。
+目标 2：实现 inference 函数
+
+参数：
+text: 待推理的文本，其中含有 [MASK] 标记需要模型填充。
+onnx_path: ONNX 模型文件的路径。
+tokenizer_path: 分词器的文件的绝对路径。
+功能：
+使用分词器对输入文本进行编码。
+将编码后的输入传入已转换好的 ONNX 模型进行推理，获取预测结果。
+返回值：
+返回一个字符串列表，其中包含针对 [MASK] 位置的最有可能的 top 5 词语候选，按重要性降序排列。
+提示 1：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+from typing import List
+import torch
+from transformers import AutoTokenizer, AutoModelWithLMHead
+import onnxruntime as ort
+
+
+def convert(model_path: str, tokenizer_path: str, onnx_path: str) -> None:
+    #TODO
+
+
+def inference(text: str, onnx_path: str, tokenizer_path: str) -> List[str]:
+    #TODO
+
+
+if __name__ == '__main__':
+    model_path = "/home/project/09/bert-base-chinese"
+    tokenizer_path = "/home/project/09/bert-base-chinese"
+    onnx_path = "/home/project/09/bert_base_chinese.onnx"
+    convert(model_path, tokenizer_path, onnx_path)
+    text = "巴黎是 [MASK] 国的首都。"
+    preds = inference(text, onnx_path, tokenizer_path)
+    print(preds)
+
+提示 2：当实现以上目标后，考生可以在终端自行测试对应功能。
+
+输出：
+
+['法', '德', '英', '美', '该']
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+切勿删除以上代码块中的任何字符，以免造成判题不通过。
+切勿修改任务中默认提供的文件名称、函数名称等，以免造成判题不通过。
+ONNXRuntime 的推理结果的后处理部分应当以 Numpy 数组的形式进行处理，不得使用 Pytorch 中的算子和操作。
+判分标准
+满分为 10 分，判分细则如下：
+
+实现目标 1，5 分；
+实现目标 2，5 分；
+注意：未遵守规定，本题得 0 分。
+
+08 文本链式推理
+介绍
+在机器学习中，链式推理是一种通过多步推理得出最终答案的技术。它类似于人类的逻辑推理过程：从已有的信息逐步得出新的结论。链式推理在问答、对话、推荐系统等领域尤为重要，因为它可以在复杂问题中帮助模型逐步处理输入信息，从而得到高质量的结果。
+
+本任务中，链式推理的核心应用在文本相似度计算上。文本相似度是一种衡量两个文本在语义上接近程度的方法，广泛用于信息检索、推荐系统、语义搜索等场景。对于汉语处理任务，分词是必要的基础步骤之一。在分词过程中，句子被分解为单个词语或词组，从而便于后续处理。基于分词的嵌入模型能够对文本生成向量化的语义表示，以此实现计算文本间的相似度。使用预训练模型和分词器，我们可以将输入文本转化为嵌入表示，生成用于计算相似度的特征。
+
+本任务要求您实现一个基于链式推理的文本推荐系统。通过加载指定的嵌入模型和分词器，生成文本的嵌入表示，计算查询文本与候选文本库之间的相似度，找到最匹配的文本，并在推荐文本中高亮相似词汇。
+
+准备
+开始答题前，请确认当前目录即 /home/project/08 下包含以下文件：
+
+embedding.onnx
+embedding.pkl
+task.py
+其中：
+
+embedding.onnx，是本任务提供的文本特性提取预训练模型。
+embedding.pkl，是本任务提供的分词器对象。
+task.py，是你后续答题过程中编写代码的地方。源代码运行方式如下：
+cd /home/project/08
+python task.py
+
+目标
+请按要求实现以下目标。
+
+目标 1：实现 __init__ 方法
+
+参数：
+model_path：ONNX 模型的文件路径。
+tokenizer_path：分词器对象的文件路径。
+功能：
+加载指定的 ONNX 模型文件并初始化 ONNX 推理会话，并存储在名为 self.session 的属性中。
+加载序列化的分词器对象，用于文本分词和编码，并存储在名为 self.tokenizer 的属性中。
+目标 2：实现 embed_texts 方法
+
+参数：
+texts：待转换为嵌入向量的文本列表。
+功能：
+使用分词器对输入的文本列表进行编码，生成 ONNX 模型推理所需要的数据。
+在编码过程中，确保文本长度一致：
+填充：对于较短的文本，自动添加填充值直到长度与文本列表中最长文本长度一致。
+返回值：
+形状为 (n, d) 的数组，其中 n 是文本数量，d 是嵌入维度，表示每个文本的嵌入向量。
+目标 3：实现 find_most_similar 方法
+
+参数：
+query：查询文本。
+corpus：文本库，每个文本将与查询文本进行相似度比较。
+功能：
+使用 embed_texts 方法对查询文本和文本库进行编码，生成对应的嵌入向量。
+计算查询文本与每个文本的余弦相似度。
+找出相似度最高的文本及其相似度分数。
+返回值：
+返回最相似的文本以及对应的相似度分数。
+目标 4：实现 highlight_similar_words 函数
+
+参数：
+text1：查询文本。
+text2：文本库中的文本。
+功能：
+使用 jieba 对两个文本分别进行分词。
+在 text2 中，将出现在 text1 中的单词用 HTML <b> 标签包裹，以突出显示相似单词。
+返回值：
+包含 HTML 格式的字符串。
+基于以下代码补充 #TODO 处的函数代码，并执行 main() 函数，确保能够实现以上目标。
+
+提示 1：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+import pickle
+from typing import List, Tuple
+import jieba
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import onnxruntime as ort
+
+
+class TextSimilarityRecommender:
+    def __init__(self, model_path: str, tokenizer_path: str):
+        #TODO
+
+    def embed_texts(self, texts: List[str]) -> np.ndarray:
+        #TODO
+
+    def find_most_similar(self, query: str, corpus: List[str]) -> Tuple[str, float]:
+        #TODO
+
+    def recommend(self, query: str, corpus: List[str]) -> str:
+        most_similar_text, similarity = self.find_most_similar(query, corpus)
+        print(f"{most_similar_text=}, {similarity=}")
+        highlighted_text = highlight_similar_words(query, most_similar_text)
+        return highlighted_text
+
+
+def highlight_similar_words(text1: str, text2: str) -> str:
+    #TODO
+
+
+if __name__ == '__main__':
+    recommender = TextSimilarityRecommender("embedding.onnx", "embedding.pkl")
+    corpus = ["北京今日天气：阴", "蓝桥杯赛事安排"]
+    query = "北京今日天气怎么样"
+    recommendation = recommender.recommend(query, corpus)
+    print(recommendation)
+
+提示 2：当实现以上目标后，考生可以自行测试对应功能。
+
+输出：
+
+most_similar_text='北京今日天气：阴', similarity=0.98432994
+<b>北京</b><b>今日</b><b>天气</b>：阴
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+切勿删除以上代码块中的任何字符，以免造成判题不通过。
+切勿修改任务中默认提供的文件名称、函数名称等，以免造成判题不通过。
+判分标准
+满分为 10 分，判分细则如下：
+
+实现目标 1，2 分；
+实现目标 2，2 分；
+实现目标 3，3 分；
+实现目标 4，3 分；
+注意：未遵守规定，本题得 0 分。
+
+07 分组推理
+介绍
+超分辨率任务（Super-Resolution, SR）是一种计算机视觉技术，旨在将低分辨率图像转换为高分辨率图像。通过超分辨率模型，可以提升图像的细节和清晰度，使得图像质量得以显著改善。这项技术广泛应用于医学影像、卫星图像处理、视频流媒体增强等领域。
+
+
+
+在处理大量分辨率各异的图像时，通过将图像按分辨率分组并进行批量推理（Batch Inference），可以显著提升推理性能，减少计算时间和资源开销。这种分组推理的方法尤其适用于需要同时处理多张图像的场景，能够充分利用硬件加速器的并行计算能力。
+
+本任务的目标是实现两个关键函数：首先将图像按尺寸分组，其次针对每组图像进行批量推理。这样可以提升 ONNX 超分辨率模型的推理效率，达到更快速的图像处理效果。
+
+准备
+开始答题前，请确认当前目录即 /home/project/07 下包含以下文件：
+
+srcnn.onnx
+task.py
+其中：
+
+srcnn.onnx 是本任务提供的超分辨率预训练模型。
+task.py，是你后续答题过程中编写代码的地方。源代码运行方式如下：
+cd /home/project/07
+python task.py
+
+目标
+请按要求实现以下目标。
+
+目标 1：实现 group_images_by_size 函数
+
+参数：
+images_dict：字典，键是图像名称，值是图像数据，形状为 (height,width,3)，表示图像的高度、宽度和 RGB 通道。
+功能：
+将图像按尺寸分组，遍历 images_dict 中的图像，根据每个图像的高度和宽度作为键，将具有相同尺寸的图像添加到对应的组中。
+返回值：
+字典，键为尺寸元组 (height,width)，值为列表，列表中的每个元素是一个包含图像名称和图像数据的元组。
+目标 2：实现 grouped_inference 函数
+
+参数：
+images_dict：字典，键是图像名称，值是图像数据，形状为 (height,width,3)，表示图像的高度、宽度和 RGB 通道。
+filename：ONNX 模型文件的路径。
+功能：
+使用 group_images_by_size 函数按尺寸对输入的图像字典 images_dict 进行分组。
+加载指定的 ONNX 模型文件。
+遍历每个尺寸分组，使用模型对每个分组的图像进行推理，将推理结果存储为输出字典。
+模型的推理次数等于分组数。
+返回值：
+字典，键为图像名称，值为推理后的图像输出，形状为 (height,width,3)。
+基于以下代码补充 #TODO 处的函数代码，并执行 main() 函数，确保能够实现以上目标。
+
+提示 1：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+import onnxruntime as ort
+import numpy as np
+from typing import Dict, Tuple, List
+from collections import defaultdict
+
+
+def group_images_by_size(images_dict: Dict[str, np.ndarray]) -> Dict[Tuple[int, int], List[Tuple[str, np.ndarray]]]:
+    #TODO
+
+
+def grouped_inference(images_dict: Dict[str, np.ndarray], filename: str) -> Dict[str, np.ndarray]:
+    grouped_images = group_images_by_size(images_dict)
+    print([(size, len(images), images[0][1].shape) for size, images in grouped_images.items()])
+    #TODO
+
+
+def main() -> None:
+    filename = 'srcnn.onnx'
+    images = {f'image{i}': np.random.random([128*(i%3+1), 128*(i%2+1), 3]).astype(np.float32) for i in range(16)}
+    print([(file, image.shape) for file, image in images.items()])
+    images = grouped_inference(images, filename)
+    print([(file, image.shape) for file, image in images.items()])
+
+
+if __name__ == '__main__':
+    main()
+
+提示 2：当实现以上目标后，考生可以在终端自行测试对应功能。
+
+控制台输出：
+
+[('image0', (128, 128, 3)), ('image1', (256, 256, 3)), ('image2', (384, 128, 3)), ('image3', (128, 256, 3)), ('image4', (256, 128, 3)), ('image5', (384, 256, 3)), ('image6', (128, 128, 3)), ('image7', (256, 256, 3)), ('image8', (384, 128, 3)), ('image9', (128, 256, 3)), ('image10', (256, 128, 3)), ('image11', (384, 256, 3)), ('image12', (128, 128, 3)), ('image13', (256, 256, 3)), ('image14', (384, 128, 3)), ('image15', (128, 256, 3))]
+[((128, 128), 3, (128, 128, 3)), ((256, 256), 3, (256, 256, 3)), ((384, 128), 3, (384, 128, 3)), ((128, 256), 3, (128, 256, 3)), ((256, 128), 2, (256, 128, 3)), ((384, 256), 2, (384, 256, 3))]
+[('image0', (256, 256, 3)), ('image6', (256, 256, 3)), ('image12', (256, 256, 3)), ('image1', (512, 512, 3)), ('image7', (512, 512, 3)), ('image13', (512, 512, 3)), ('image2', (768, 256, 3)), ('image8', (768, 256, 3)), ('image14', (768, 256, 3)), ('image3', (256, 512, 3)), ('image9', (256, 512, 3)), ('image15', (256, 512, 3)), ('image4', (512, 256, 3)), ('image10', (512, 256, 3)), ('image5', (768, 512, 3)), ('image11', (768, 512, 3))]
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+切勿删除以上代码块中的任何字符，以免造成判题不通过。
+读取的数据不进行任何预处理，直接用于模型推理。
+切勿修改任务中默认提供的文件名称、函数名称等，以免造成判题不通过。
+判分标准
+满分为 10 分，判分细则如下：
+
+实现目标 1，4 分；
+实现目标 2，6 分；
+注意：未遵守规定，本题得 0 分。
+
+06 SGD 调参
+介绍
+在机器学习和数值优化中，梯度优化算法是一类用于寻找函数最优解的重要方法。其核心思想是通过计算目标函数相对于变量的梯度，并沿梯度方向更新变量，使其逐步逼近函数的最小值或最大值。梯度下降法（Gradient Descent）是其中最常用的一种算法，每一步都沿负梯度方向调整变量，以达到局部最优解。
+
+在优化中，调整步长（学习率）、引入动量等策略可以加速收敛并提高稳定性。PyTorch 提供的 SGD 优化器是一种通用的梯度优化工具，它支持批量更新和动量参数调节，适用于多种优化场景。
+
+本任务要求在给定的超参数下，对 Rosenbrock 函数实现梯度优化，通过 SGD 优化器的参数调整，逼近该函数的局部最优解，最终实现高效的收敛。
+
+准备
+开始答题前，请确认当前目录即 /home/project/06 下包含以下文件：
+
+task.py
+其中：
+
+task.py，是你后续答题过程中编写代码的地方。源代码运行方式如下：
+cd /home/project/06
+python task.py
+
+目标
+请按要求实现以下目标。
+
+目标 1：实现 find_rosenbrock_minimum 函数
+
+参数：
+max_iter：优化的最大迭代次数，用于控制梯度下降过程的步数。
+功能：
+使用 SGD 优化器对 Rosenbrock 函数中的变量 x 和 y 进行迭代更新。
+在指定的迭代次数内，通过优化步骤寻找局部最优值。
+返回值：
+一个包含四个值的元组：最终迭代后的 x 值；最终迭代后的 y 值；在最终点的 Rosenbrock 函数值；用于执行更新的 SGD 优化器实例。
+目标 2：寻找 SGD 最优参数
+
+功能：
+在 find_rosenbrock_minimum 函数中，通过调整 SGD 优化器参数，在最大迭代次数后，尽可能逼近 Rosenbrock 函数的局部最优值。
+基于以下代码补充 #TODO 处的函数代码，并执行 main() 函数，确保能够实现以上目标。
+
+提示 1：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+import torch
+from torch.optim import Adam, SGD
+from typing import Tuple
+
+def rosenbrock_function(x: torch.Tensor, y: torch.Tensor, a: float=1., b: float=100.) -> torch.Tensor:
+
+    return (a - x)**2 + b * (y - x**2)**2
+
+def find_rosenbrock_minimum(max_iter: int) -> Tuple[float, float, float, SGD]:
+
+    x = torch.tensor([0.0], requires_grad=True)
+    y = torch.tensor([0.0], requires_grad=True)
+
+    #TODO
+
+
+if __name__ == "__main__":
+    x_min, y_min, f_min, sgd = find_rosenbrock_minimum(max_iter=1000)
+    print(f"局部最小值点：x = {x_min}, y = {y_min}, 对应的函数值：f(x, y) = {f_min}, SGD 参数：{sgd.state_dict()}")
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+切勿删除以上代码块中的任何字符，以免造成判题不通过。
+SGD 初始位置、Rosenbrock 函数参数、最大迭代次数已指定，切勿修改，以免造成判题不通过。
+切勿修改任务中默认提供的文件名称、函数名称等，以免造成判题不通过。
+判分标准
+满分为 20 分，判分细则如下：
+
+实现目标 1，5 分；
+目标 2 根据到达最大迭代次数后，与局部最优的差距（计算出的函数值与已知的局部最优函数值的绝对差值）评分：
+若最终结果与局部最优的差距在
+1
+𝑒
+−
+1
+1e−1 级别，得 11 分，每小一个级别，多得 1 分；
+若差距在
+1
+𝑒
+−
+5
+1e−5 级别，得 15 分；
+若差距大于或等于 0.1，目标 2 不得分。
+注意：未遵守规定，本题得 0 分。
+
+05 点积注意力
+介绍
+注意力机制（Attention Mechanism）是一种模仿人类注意力特征的技术，广泛应用于自然语言处理和计算机视觉等领域。它允许模型在处理输入数据时，选择性地关注某些部分的信息，而不是平均使用所有输入信息。这一机制的核心在于根据输入中各部分的重要性进行动态加权，从而提升模型的性能。点积注意力（Dot-Product Attention）是一种常用的注意力计算方式，利用查询（Query）与键（Key）的点积来计算相似度，通常应用于 Transformer 中使用。
+
+现在给你点积注意力的示意图，你能编码实现它吗？
+
+准备
+开始答题前，请确认 /home/project/05 目录下包含以下文件：
+
+task.py 是你后续答题过程中编写代码的地方。源代码运行方式如下：
+
+# 运行代码
+cd /home/project/05
+python task.py
+
+目标
+请在 task.py 文件中编写代码，并按照以下要求实现点积注意力。根据给定程序的逻辑和图 - 1 点积注意力的示意图，完成 ScaledDotProductAttention 类的编写。
+
+
+
+图 - 1 原论文中关于点积注意力的示意图
+
+完成 ScaledDotProductAttention 类的编写，该类的功能是计算“点积注意力”。在 ScaledDotProductAttention 类中，需要完善 forward 函数：
+
+forward(self, Q: Tensor, K: Tensor, V: Tensor)->Tuple[Tensor, Tensor] ：前向传播函数。形参的含义如下：
+
+Q : 用于运算的查询（query）。
+
+K : 用于运算的键（key）。
+
+V ：用于运算的值（value）。
+
+返回值包括：① Softmax 处理后的输出（对应图 - 1 中的 output1 ）；② 整个点积注意力的输出（对应图 - 1 中的 output2 ）。
+
+提示：无需考虑“掩码”这一步。（对应图 - 1 左图中的 Mask (opt.)）
+
+请注意，所需的相关库和类已经在 task.py 提供了，你无需导入其它相关库或定义新的类对象。这意味着：① 不能通过其它库实现该功能；②只能使用在 ScaledDotProductAttention 类 __init__ 方法中定义的类对象，不能使用其它类对象。
+
+import torch
+from torch import nn, Tensor
+import numpy as np
+from typing import Tuple
+
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self):
+        super(ScaledDotProductAttention, self).__init__()
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, Q: Tensor, K: Tensor, V: Tensor)->Tuple[Tensor, Tensor]:
+        #TODO
+        pass
+
+if __name__ == '__main__':
+    scaled_dot_product_attn = ScaledDotProductAttention()
+    d_model = 768
+    batch_size, tgt_len, src_len = 2, 10, 20
+    Q, K, V = torch.rand((batch_size, tgt_len, d_model)), torch.rand((batch_size, src_len, d_model)), torch.rand((batch_size, src_len, d_model))
+
+    output1, output2 = scaled_dot_product_attn(Q, K, V)
+    print(output1.shape) # torch.Size([2, 10, 20])
+    print(output2.shape) # torch.Size([2, 10, 768])
+
+输入输出示例：
+假设输入查询 Q、键 K 和值 V 的形状分别为 (2, 10, 768)、(2, 20, 768) 和 (2, 20, 768)。经过点积注意力操作后，注意力分数（output1）的形状将为 (2, 10, 20)，而点积注意力最终的输出（output2）形状为 (2, 10, 768)。
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+
+提示：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+在你正式编写代码之前，请把每个待补充代码处的 pass 删除。
+
+切勿删除以上代码块中未要求删除的任何字符，以免造成判题不通过。
+
+切勿修改任务中默认提供的文件名、函数名称等，以免造成判题不通过。
+
+判分标准
+满分 10 分。判分细则如下：
+
+实现目标，10 分。
+未遵守题目相关要求或未能实现目标，本题得 0 分。
+
+04 LeNet 卷积神经网络
+介绍
+LeNet 是一种经典的卷积神经网络（CNN）架构，由 Yann LeCun 等人在 1989 年提出，主要用于手写数字识别。该网络通过层级结构提取特征，能够自动学习图像中的重要信息，是卷积神经网络的奠基之作，标志着深度学习在图像识别领域的起步。LeNet 系列包括多个版本，从 LeNet-1 到 LeNet-5，每个版本在架构上有所不同，逐步改进了特征提取和分类性能。其中，LeNet-5 是该系列中最著名的版本，由 Yann LeCun 等人在 1998 年在论文《Gradient-Based Learning Applied to Document Recognition》中发表，通常被视为卷积神经网络的经典代表。
+
+目前，我们需要将 LeNet-5 作为分类模型应用于一个分类任务，因此需要从头开始构建 LeNet-5 模型。我们手头有以下资料：① LeNet-5 原论文中的模型架构图；② 人工智能课程的小蓝老师手绘的流程图。
+
+
+
+图 - 1 LeNet-5 架构图
+
+
+
+图 - 2 LeNet-5 流程图
+
+图 - 2 LeNet-5 流程图各个块的含义如下：
+
+Convolutions: (in_channels, out_channels, k, s)：表示输入特征通道为 in_channels，输出通道为 out_channels，卷积核大小为 k × k 和步长为 s 的二维卷积操作；
+Subsampling: (k, s) ：表示滑动窗口为 k × k，步长为 s 的平均池化操作；
+Full Connection:(in_features, out_features)：表示输入特征维度为 in_features，输出特征维度为 out_features 的全连接层。
+Gaussian Connections: (in_features, out_features) ：表示输入特征维度为 in_features，输出特征维度为 out_features 的全连接层。
+准备
+开始答题前，请确认 /home/project/04 目录下包含以下文件：
+
+task.py 是你后续答题过程中编写代码的地方。源代码运行方式如下：
+
+# 运行代码
+cd /home/project/04
+python task.py
+
+目标
+请在 task.py 文件中编写代码，并按照以下要求完成 LeNet-5 网络的搭建。根据给定程序的逻辑、模型架构图（图 - 1）和模型流程图（图 - 2），完成 LeNet5 类的编写。
+
+LeNet5 类有以下两个函数需要补充完整：
+
+__init__(self, num_classes: int = 10, in_channels: int=1, H: int=32, W: int=32)->None ：初始化函数。各个参数的含义如下：
+
+num_classes : 分类任务的类别数量，默认值为 10。
+in_channels : 输入图像的通道数，默认值为 1。
+H : 输入图像的高度，默认值为 32。
+W : 输入图像的宽度，默认值为 32。
+forward(self, x: Tensor)->Tuple[Tensor, Tensor] ：前向传播函数。
+
+形参的含义如下：
+
+x : 输入图像，其形状为 (batch_size, channels, H, W)，各个参数的含义如下：
+batch_size：在深度学习的计算机视觉任务中，一次通常输入一批数据，batch_size 表示每次输入的样本数量。
+channels：输入图像的通道数，例如黑白图像的通道数为 1。
+H：输入图像的高度。
+W：输入图像的宽度。
+返回值：① 第一个全连接层的输入 S4；② 图像经过整个模型处理后的输出 Output。
+
+需要注意的是：
+
+每个卷积操作之后都会紧跟着一个 sigmoid 激活函数。
+在本题中，请使用 nn.xxx() 中的函数或类来实现你的解答，禁止使用 F.xxx() 函数或任何其他函数库。你的代码中应仅包含 nn 模块的相关调用。
+例如，如果你需要实现一个二维最大池化操作，请使用 nn.MaxPool2d，而不是 F.max_pool2d。
+import torch
+import torch.nn as nn
+from torch import Tensor
+from typing import Tuple
+
+class LeNet5(nn.Module):
+
+    def __init__(self, num_classes: int = 10, in_channels: int=1, H: int=32, W: int=32)->None:
+        super(LeNet5, self).__init__()
+        #TODO
+        pass
+
+    def forward(self, x: Tensor)->Tuple[Tensor, Tensor]:
+        #TODO
+        pass
+
+if __name__ == '__main__':
+    img = torch.Tensor(8, 1, 32, 32)
+    lenet5 = LeNet5(10, img.size(1), img.size(2), img.size(3))
+    x, y = lenet5(img)
+    print(x.shape) # torch.Size([8, 16, 5, 5])
+    print(y.shape) # torch.Size([8, 10])
+
+输入输出示例
+例如，输入图像数据的形状为：(8, 1, 32, 32)，分类任务的类别数量为 10，经过处理之后：
+
+第一个全连接层的输入形状为：(8, 16, 5, 5)。
+图像经过整个模型处理后的输出形状为：(8, 10)。
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+
+提示：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+在你正式编写代码之前，请把每个待补充代码处的 pass 删除。
+
+切勿删除以上代码块中未要求删除的任何字符，以免造成判题不通过。
+
+切勿修改任务中默认提供的文件名、函数名称等，以免造成判题不通过。
+
+判分标准
+满分 10 分。判分细则如下：
+
+实现目标，10 分。
+未遵守题目相关要求或未能实现目标，本题得 0 分。
+
+03 图像加载
+介绍
+图像加载是计算机视觉和深度学习中的一个基础环节，指的是将存储在磁盘上的图像文件读取到内存中，并转化为模型能够处理的格式。在实际应用中，图像加载不仅仅是读取文件，它还涉及图像的转换、预处理、格式标准化等步骤。因为图像通常存储为文件（如 .jpg、.png 等），所以需要一些工具或库将这些图像文件读取成数组或张量，方便后续处理和训练。
+
+在基于 PyTorch 框架进行计算机视觉任务时，加载后的图像通常满足以下格式要求：
+
+图像文件被读取并转化为张量（Tensor）。
+彩色图像采用 RGB 格式。
+图像的形状为 (C, H, W)，其中 C 表示通道数（通常为 3，代表 RGB）、H 表示图像的高度，W 表示图像的宽度。
+图像的每个像素值都被缩放到 [0, 1] 范围内。
+你可以通过编程实现上述的图像加载吗？
+
+准备
+开始答题前，请确认 /home/project/03 目录下包含以下文件：
+
+task.py 是你后续答题过程中编写代码的地方。源代码运行方式如下：
+
+# 运行代码
+cd /home/project/03
+python task.py
+
+img.jpg 是示例图像，它的形状为 (3, 334, 500) 。
+
+目标
+请在 task.py 文件中编写代码，实现 load_image(file_path: str)->Tensor 方法。该方法根据给定的图像路径加载图像，并确保加载后的图像满足以下要求：
+
+图像文件被读取并转化为张量（Tensor）。
+彩色图像采用 RGB 格式。
+图像的形状为 ( C, H, W )，其中 C 表示通道数（通常为 3，代表 RGB）、H 表示图像的高度，W 表示图像的宽度。
+图像的每个像素值都被缩放到 [0, 1] 范围内。
+该方法参数的含义如下：
+
+file_path : 图像的绝对路径，类型为字符串。
+该方法的返回值：返回加载到内存中的图像，类型为张量（Tensor）。
+
+提示，你可以选择使用你熟悉的图像加载方式来实现该方法，但最终返回的图像必须符合上述要求。
+
+from PIL import Image
+from torch import Tensor
+import numpy as np
+from torchvision import transforms
+
+def load_image(file_path: str)->Tensor:
+    #TODO
+    pass
+
+if __name__ == '__main__':
+    file_path = 'img.jpg'
+    img = load_image(file_path)
+    print(img.shape) # torch.Size([3, 334, 500])
+    print(type(img)) # <class 'torch.Tensor'>
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+
+提示：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+在你正式编写代码之前，请把每个待补充代码处的 pass 删除。
+
+切勿删除以上代码块中未要求删除的任何字符，以免造成判题不通过。
+
+切勿修改任务中默认提供的文件名、函数名称等，以免造成判题不通过。
+
+判分标准
+满分 10 分。判分细则如下：
+
+实现目标，10 分。
+未遵守题目相关要求或未能实现目标，本题得 0 分。
+
+02 电影信息提取
+介绍
+在互联网时代，大量的电影和电视节目信息以网页形式发布，网页中包含了电影的标题、类别、摘要、上映年份等关键信息。然而，这些信息通常被嵌入到复杂的 HTML 结构中，使得自动提取和分析这些数据变得具有挑战性。掌握从网页中提取结构化数据的技术，对于数据挖掘和信息获取有着重要意义。
+
+本任务的目标是通过网页分析技术，解析包含电影信息的 HTML 页面，提取并还原出电影的标题、类别、摘要和上映年份，最终生成一个结构化的数据文件。
+
+准备
+开始答题前，请确认 /home/project/02 目录下包含以下文件：
+
+html_pages/*.html
+task.py
+其中：
+
+html_pages/*.html，是本任务提供的网页文件，一共有 3 种类型：
+
+网站的首页，文件为 html_pages/index.html。
+类别页面，文件地址由首页提供。
+详情页面，文件地址由类别页面提供。
+task.py，是你后续答题过程中编写代码的地方。源代码运行方式如下：
+
+# 运行代码
+cd /home/project/02
+python task.py
+
+目标
+请按要求实现以下目标。
+
+目标 1：实现 parse_index_page 函数
+
+参数：
+index_path：首页 HTML 文件的路径。
+功能：
+解析首页，提取所有类别页面的链接。
+返回值：
+一个列表，包含每个类别页面的链接。
+目标 2：实现 parse_category_page 函数
+
+参数：
+category_page_path：类别页面的文件路径。
+html_dir：HTML 文件的存放目录，用于构造完整的电影详情页面路径。
+功能：
+解析类别页面，提取该类别中所有电影的链接。
+返回值：
+一个包含电影详情页面链接的列表。
+目标 3：实现 parse_movie_page 函数
+
+参数：
+movie_page_path：电影详情页面的文件路径。
+功能：
+解析电影详情页面，提取并返回电影的标题、摘要、类别和年份。
+返回值：
+包含电影标题、摘要、类别和年份的元组。
+目标 4：实现 save_to_csv 函数
+
+参数：
+movie_data：要保存的电影数据列表，每个元组包含电影的标题、摘要、类别和年份。
+output_csv：输出的 CSV 文件路径。
+功能：
+将提取的电影信息写入指定的 CSV 文件。
+基于以下代码补充 #TODO 处的函数代码，并执行 main() 函数，确保能够实现以上目标。
+
+提示 1：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+import os
+import csv
+import pandas as pd
+from typing import List, Tuple
+from bs4 import BeautifulSoup
+
+def parse_index_page(index_path: str) -> List[str]:
+    #TODO
+
+def parse_category_page(category_page_path: str, html_dir: str) -> List[str]:
+    #TODO
+
+def parse_movie_page(movie_page_path: str) -> Tuple[str, str, str, str]:
+    #TODO
+
+def save_to_csv(movie_data: List[Tuple[str, str, str, str]], output_csv: str) -> None:
+    #TODO
+
+def main(html_dir: str, output_csv: str) -> None:
+    index_path = os.path.join(html_dir, 'index.html')
+
+    category_pages = parse_index_page(index_path)
+    print(f'{category_pages[:3]=}')
+    movie_data = []
+
+    for i, category_filename in enumerate(category_pages):
+        category_page_path = os.path.join(html_dir, category_filename)
+
+        movie_pages = parse_category_page(category_page_path, html_dir)
+        if i == 0:
+            print(f"{category_page_path=}, {movie_pages[:3]=}")
+        for j, movie_page_path in enumerate(movie_pages):
+            movie_info = parse_movie_page(movie_page_path)
+            if i == 0 and j ==0:
+                print(movie_info)
+            movie_data.append(movie_info)
+
+    save_to_csv(movie_data, output_csv)
+
+
+if __name__ == "__main__":
+    html_dir = 'html_pages'
+    output_csv = 'imdb_extracted.csv'
+
+    main(html_dir, output_csv)
+
+提示 2：当实现以上目标后，考生可以在终端自行测试对应功能。
+
+终端输出：
+
+category_pages[:3]=['Action.html', 'Adventure.html', 'Animation.html']
+category_page_path='html_pages/Action.html', movie_pages[:3]=['html_pages/The_Dark_Knight_2008.html', 'html_pages/Inception_2010.html', 'html_pages/The_Lord_of_the_Rings_The_Fellowship_of_the_Ring_2001.html']
+('The Dark Knight', 'When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.', 'Action, Crime, Drama', '2008')
+
+处理后的 CSV 文件：
+
+titles,summary,genre,year
+The Dark Knight,"When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.","Action, Crime, Drama",2008
+Inception,A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.,"Action, Adventure, Sci-Fi",2010
+The Lord of the Rings: The Fellowship of the Ring,A meek Hobbit from the Shire and eight companions set out on a journey to destroy the powerful One Ring and save Middle-earth from the Dark Lord Sauron.,"Action, Adventure, Drama",2001
+...
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+切勿删除以上代码块中的任何字符，以免造成判题不通过。
+切勿修改任务中默认提供的文件名称、函数名称等，以免造成判题不通过。
+判分标准
+满分为 12 分，判分细则如下：
+
+实现目标 1，3 分；
+实现目标 2，3 分；
+实现目标 3，3 分；
+实现目标 4，3 分；
+注意：未遵守规定，本题得 0 分。
+
+01 层归一化操作
+介绍
+层归一化（Layer Normalization，简称 LN）是一种用于加速训练和提高神经网络性能的技术，广泛应用于深度学习模型中，尤其是在处理序列数据（如 RNN、LSTM 和 Transformer）时。它的核心思想是对每一个样本的特征进行标准化，使得每个特征的均值为 0，方差为 1，从而稳定和加速训练过程。
+
+现在，请你编写代码实现层归一化操作。
+
+准备
+开始答题前，请确认 /home/project/01 目录下包含以下文件：
+
+task.py 是你后续答题过程中编写代码的地方。源代码运行方式如下：
+
+# 运行代码
+cd /home/project/01
+python task.py
+
+目标
+请在 task.py 文件中编写代码，对输入序列的最后一个维度进行层归一化操作。具体来说：
+
+请完成 layer_norm(X: np.ndarray, epsilon: float=1e-5)->np.ndarray 方法，该方法的功能是对输入序列的每个样本在最后一个维度上进行层归一化。
+
+该方法参数的含义如下：
+
+X : 输入序列。
+epsilon : 一个小的常数，默认为 1e-5，用来避免除以零的情况。
+该方法的返回值：经过层归一化操作处理后的序列。
+
+层归一化的计算公式为：
+𝑦
+𝑖
+=
+𝑥
+𝑖
+−
+𝜇
+𝜎
+2
++
+𝜖
+y
+i
+​
+ =
+σ
+2
+ +ϵ
+​
+
+x
+i
+​
+ −μ
+​
+
+其中：
+
+𝑥
+𝑖
+x
+i
+​
+  是输入序列中的某个特征值。
+𝑦
+𝑖
+y
+i
+​
+  是输出序列中与
+𝑥
+𝑖
+x
+i
+​
+  对应的特征值。
+𝜇
+μ 是特征的均值。
+𝜎
+σ 是特征的标准差
+𝜖
+ϵ 是一个小的常数，一般为
+1
+0
+−
+5
+10
+−5
+ ，用来避免除以零的情况。
+import numpy as np
+
+def layer_norm(X: np.ndarray, epsilon: float=1e-5)->np.ndarray:
+    # TODO
+    pass
+
+if __name__ == '__main__':
+    # 输入示例
+    X = np.random.rand(16, 196, 768)
+    epsilon = 1e-5
+    # 层归一化
+    Y = layer_norm(X, epsilon)
+    print(Y) # 经过层归一化处理后，Y 最后一个维度的均值为 0，方差为 1（误差在 1e-3 范围内均视为正确答案）。
+
+输入输出示例：
+假设输入序列 X 的形状为
+16
+×
+196
+×
+768
+16×196×768 ，epsilon 为
+1
+0
+−
+5
+10
+−5
+ 。对该输入序列进行层归一化处理后，最终得到的输出序列在最后一个维度的均值为
+0
+0，方差为
+1
+1。
+
+规定
+务必在 #TODO 所在的函数范围内编写代码，以免造成判题不通过。
+
+提示：点击代码块右上方的 copy 按钮，将代码完整复制到右侧环境中后开始编码。
+
+在你正式编写代码之前，请把每个待补充代码处的 pass 删除。
+
+切勿删除以上代码块中未要求删除的任何字符，以免造成判题不通过。
+
+切勿修改任务中默认提供的文件名、函数名称等，以免造成判题不通过。
+
+判分标准
+满分 8 分。判分细则如下：
+
+实现目标，8 分。
+未遵守题目相关要求或未能实现目标，本题得 0 分。
