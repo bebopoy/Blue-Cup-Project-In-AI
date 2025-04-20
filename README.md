@@ -955,3 +955,157 @@ if __name__ == '__main__':
 ```
 
 ## emmbedding
+
+## tensorflow 模型定义与文本生成
+
+```python
+import numpy as np
+import jieba
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
+import tensorflow as tf
+
+def build_train_model(vocab_size, input_data, output_data, model_save_path):
+    #TODO
+    embedding_dim=128
+    hidden_units=128
+
+    model = Sequential()  # 创建一个序贯模型
+    # 添加嵌入层，将输入的单词索引映射为embedding_dim维的向量表示
+    model.add(Embedding(vocab_size, embedding_dim, input_length=None))
+    # 添加一个LSTM层，将嵌入层的输出作为输入，输出序列的每个时间步都包含完整的隐藏状态序列
+    model.add(LSTM(hidden_units, return_sequences=True))
+    # 添加一个全连接层，输出维度为vocab_size，使用softmax激活函数进行分类
+    model.add(Dense(vocab_size, activation='softmax'))
+    model.compile(optimizer='adam', loss='categorical_crossentropy')  # 编译模型，配置优化器和损失函数
+    # 训练模型
+    callback = EarlyStopping(monitor='val_loss', patience=3)
+    model.fit(input_data, output_data, batch_size=2, epochs=3, callbacks=[callback])
+    model.save(model_save_path)  # 保存训练好的模型
+
+def generate_text(model_save_path, start_sequence, word_to_idx, idx_to_word):
+    #TODO
+    generated_text = start_sequence  # 初始化生成的文本为起始序列
+    model = load_model(model_save_path)  # 加载训练好的模型
+    #input_seq = [word_to_idx[word] for word in generated_text.split()]  # 将生成的文本转换为单词索引序列
+    input_seq = [word_to_idx[generated_text]]
+    input_seq = np.array(input_seq).reshape(1, -1)  # 对输入序列进行预测
+    predictions = model.predict(input_seq)
+    # 获取预测结果中概率最高的索引
+    pred_idx = np.argmax(predictions)
+    word = idx_to_word[pred_idx]  # 根据预测的单词索引找到对应的单词
+    generated_text += " " + word  # 将生成的单词添加到生成的文本中
+    return generated_text
+
+```
+
+对比第二种，生成句子
+
+```python
+def generate_text(start_sequence, max_length):
+    # 加载训练好的语言模型
+    model = load_model("lm.h5")
+    # 加载词汇表和索引转换字典
+    with open("vocab.json", 'r', encoding='utf-8') as f:
+        vocab_data = json.load(f)
+        word_to_idx = vocab_data['word_to_idx']
+        idx_to_word = vocab_data['idx_to_word']
+    generated_text = start_sequence
+    input_seq = [word_to_idx[word] for word in generated_text.split()]
+    input_seq = np.array(input_seq).reshape(1,-1)
+
+    for _ in range(max_length):
+        pre_idx = model.predict(input_seq)
+        key_idx = np.argmax(pre_idx)
+        key_word = idx_wo_word[str(key_idx)]
+        generated_text += ' ' + ket_word
+        input_seq = np.append(input_seq, key_idx)
+        input_seq =input_seq[1：].reshape(1,-1)
+
+    generate_index = [word_to_id[word] for word in generate_text.split()]
+
+    return generate_index
+```
+
+## torch 计算与训练流程
+
+```python
+import torch
+
+# 内容损失函数
+def content_loss(Y_hat, Y):
+    return torch.pow(Y_hat - Y.detach(), 2).mean()
+
+# 风格损失函数
+def style_loss(Y_hat, gram_Y):
+    # return torch.square(gram(Y_hat) - gram_Y.detach()).mean()     # 新版本PyTorch使用此行
+    return torch.pow(gram(Y_hat) - gram_Y.detach(), 2).mean()
+
+for epoch in range(num_epochs):
+    #TODO
+    trainer.zero_grad()
+    contents_Y_hat, styles_Y_hat = extract_features(X, content_layers, style_layers, net)
+    contents_l, styles_l, tv_l, l = compute_loss(X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram)
+    l.backward()
+    trainer.step()
+    scheduler.step()
+
+    if (epoch + 1) % 25 == 0:
+        plt.imshow(postprocess(X))
+        plt.show()
+    print(f'Epoch {epoch + 1}, Content Loss: {float(sum(contents_l))}, Style Loss: {float(sum(styles_l))}, TV Loss: {float(tv_l)}')
+
+    # 在最后一轮训练后，将损失函数的结果保存到文件中
+    if epoch == num_epochs - 1:
+        with open('output_d.txt', 'w') as f:
+            f.write(f'{float(sum(contents_l))}, {float(sum(styles_l))}, {float(tv_l)}\n')
+output_img = postprocess(X)
+output_img.save('output_d.jpg')
+
+```
+
+## PIL 读文件与调整数据维度
+
+**PIL 载入图片：**
+PIL.image.open(img_path)
+
+**torchvision.transforms.ToTensor()**
+功能：
+
+- 将 PIL 或 numpy（即 cv2 读取）格式，shape 为(H,W,C)的图像转为 shape 为(C,H,W)的 tensor，
+- 同时将每一个[0,255]范围的数值除以 255 归一化到[0,1]范围
+
+```python
+from PIL import image
+from torchvision import transforms
+# 加载为PIL
+raw_image = image.open(image_path)
+img = transforms.ToTensor()(raw_image)
+
+#经过trnasforms后，得new_img(tensor)...
+
+new_image = transforms.ToPILImage()(new_img)
+new_image.save('newimage.png')
+
+```
+
+**transforms 库的使用：**
+独特的格式
+new_tensor_img = torchvision.transforms.xxx()(orig_tensor_img)
+
+```python
+# 功能：将数据转换为标准高斯分布，即逐个channel的对图像进行标准化（均值变为0，标准差变为1），可以加快模型的收敛。
+#	对每个通道而言，Normalize执行以下操作：input[channel]=(input[channel]-mean[channel])/std[channel]
+torchvision.transforms.Normalize(mean, std)(tensor_imge)
+# 功能：调整PILImage对象的尺寸
+torchvision.transforms.Resize(size, interpolation=2)()
+# 功能：使用给定的“pad”值在所有面上填充给定的PIL图像
+torchvision.transforms.Pad(padding, fill=0, padding_mode='constant')()
+# 功能：将shape为(C,H,W)的Tensor或shape为(H,W,C)的numpy.ndarray转换成PIL.Image
+torchvision.transforms.ToPILImage(mode=None)()
+
+```
