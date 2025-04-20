@@ -305,6 +305,48 @@ def calculate_similarity(word1, word2, model_path="./word2vec_model.bin"):
     return similarity
 ```
 
+## html 读取与处理
+
+```
+1
+用select:
+求某个标签里的值 <a href="/promotions">促销活动</a>  得到"/promotions"
+```
+
+- .select('p a'),有层级顺序要求：先 p 再 a,得到的是一个列表 list
+  默认是标签名查找，soup.select('p a')
+  通过类名，soup.select('.sister')
+  通过 id 名，soup.select('#link1')
+
+```
+2
+用find find_all:
+得到<> xxx </> 的内容xxx
+```
+
+```
+link = html.find_all('ul',class_='submenu')
+link.text
+```
+
+打开 html 文件
+
+```python
+from bs4 import BeautifulSoup
+
+with open('test.html','r') as html_file:
+    html = BeautifulSoup(html_file,'html.parser')
+```
+
+## os 添加路径
+
+```python
+import os
+str_1 -> str
+str_2 -> str
+new_path = os.path.join(str_1,str_2)
+```
+
 ## 数学计算实现
 
 ### numpy

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>电子商务网站 - 产品列表</title>
+    <style>
+      .header {
+        background-color: #f8f9fa;
+        padding: 20px;
+      }
+      .product-card {
+        border: 1px solid #ddd;
+        margin: 10px;
+        padding: 15px;
+      }
+      .featured {
+        background-color: #fff8e1;
+      }
+      .price {
+        color: #e53935;
+        font-weight: bold;
+      }
+      .discount {
+        text-decoration: line-through;
+        color: #999;
+      }
+      .rating {
+        color: #ffc107;
+      }
+      .hidden {
+        display: none;
+      }
+      #special-offer {
+        border: 2px dashed #ff5722;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <h1>电子产品商城</h1>
+      <nav>
+        <ul id="main-menu">
+          <li><a href="/">首页</a></li>
+          <li><a href="/products">所有产品</a></li>
+          <li>
+            <a href="/promotions">促销活动</a>
+            <ul class="submenu">
+              <li><a href="/promotions/new">新品</a></li>
+              <li><a href="/promotions/clearance">清仓</a></li>
+            </ul>
+          </li>
+          <li><a href="/contact">联系我们</a></li>
+        </ul>
+      </nav>
+      <div class="search-box">
+        <form action="/search" method="get">
+          <input type="text" name="q" placeholder="搜索产品..." />
+          <button type="submit">搜索</button>
+          <input type="hidden" name="source" value="web" />
+        </form>
+      </div>
+    </header>
+
+    <main>
+      <section id="featured-products">
+        <h2>特色产品 <span class="badge">新品</span></h2>
+        <div class="product-grid">
+          <article class="product-card featured" id="product-101">
+            <h3><a href="/products/101">超薄笔记本电脑 Pro X</a></h3>
+            <div class="product-meta">
+              <span class="price">¥8,999</span>
+              <span class="discount">¥9,999</span>
+              <span class="rating">★★★★☆</span>
+              <span class="reviews">(128 评价)</span>
+            </div>
+            <p class="description">
+              超轻薄设计，16GB内存，1TB SSD，15.6英寸4K显示屏
+            </p>
+            <ul class="specs">
+              <li>处理器: Intel Core i7-1165G7</li>
+              <li>显卡: NVIDIA GeForce MX450</li>
+              <li>重量: 1.2kg</li>
+            </ul>
+            <button class="add-to-cart" data-product-id="101">
+              加入购物车
+            </button>
+          </article>
+
+          <article class="product-card" id="product-102">
+            <h3><a href="/products/102">智能手表 Series 5</a></h3>
+            <div class="product-meta">
+              <span class="price">¥2,499</span>
+              <span class="rating">★★★★★</span>
+              <span class="reviews">(256 评价)</span>
+            </div>
+            <p class="description">
+              全天候视网膜显示屏，血氧检测，ECG心电图功能
+            </p>
+            <div class="promo-banner">限时优惠</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="all-products">
+        <h2>所有产品</h2>
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>产品名称</th>
+              <th>价格</th>
+              <th>库存</th>
+              <th>分类</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>101</td>
+              <td><a href="/products/101">超薄笔记本电脑 Pro X</a></td>
+              <td>¥8,999</td>
+              <td>25</td>
+              <td>笔记本电脑</td>
+            </tr>
+            <tr>
+              <td>102</td>
+              <td><a href="/products/102">智能手表 Series 5</a></td>
+              <td>¥2,499</td>
+              <td>42</td>
+              <td>可穿戴设备</td>
+            </tr>
+            <tr class="out-of-stock">
+              <td>103</td>
+              <td><a href="/products/103">无线降噪耳机</a></td>
+              <td>¥1,299</td>
+              <td>0</td>
+              <td>音频设备</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="special-offer" class="hidden">
+        <h2>特别优惠 <span class="expires">(还剩3天)</span></h2>
+        <div class="offer-content">
+          <p>注册会员立享<strong>9折优惠</strong>！</p>
+          <form id="newsletter-form">
+            <label for="email">请输入您的邮箱：</label>
+            <input type="email" id="email" name="email" required />
+            <button type="submit">立即注册</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>客户服务</h4>
+          <ul>
+            <li><a href="/help">帮助中心</a></li>
+            <li><a href="/returns">退换货政策</a></li>
+            <li><a href="/shipping">配送信息</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>关于我们</h4>
+          <ul>
+            <li><a href="/about">公司简介</a></li>
+            <li><a href="/jobs">招贤纳士</a></li>
+            <li><a href="/press">新闻中心</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="copyright">
+        <p>&copy; 2023 电子产品商城. 保留所有权利.</p>
+        <p class="legal-links">
+          <a href="/privacy">隐私政策</a> | <a href="/terms">使用条款</a> |
+          <a href="/sitemap">网站地图</a>
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // 模拟一些动态加载的内容
+      setTimeout(function () {
+        document.getElementById("special-offer").classList.remove("hidden");
+
+        // 添加动态产品
+        const productGrid = document.querySelector(".product-grid");
+        const newProduct = document.createElement("article");
+        newProduct.className = "product-card";
+        newProduct.id = "product-103";
+        newProduct.innerHTML = `
+                <h3><a href="/products/103">无线降噪耳机</a></h3>
+                <div class="product-meta">
+                    <span class="price">¥1,299</span>
+                    <span class="rating">★★★☆☆</span>
+                    <span class="reviews">(64 评价)</span>
+                </div>
+                <p class="description">主动降噪，30小时续航，蓝牙5.0</p>
+            `;
+        productGrid.appendChild(newProduct);
+      }, 2000);
+    </script>
+  </body>
+</html>
