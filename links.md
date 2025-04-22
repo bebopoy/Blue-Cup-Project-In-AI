@@ -51,8 +51,8 @@ https://blog.csdn.net/weixin_44544687/article/details/124703861
 - https://blog.csdn.net/weixin_42426841/article/details/129903800?fromshare=blogdetail&sharetype=blogdetail&sharerId=129903800&sharerefer=PC&sharesource=2301_78911814&sharefrom=from_link
   PyTorch | torchvision.transforms 常用方法详解
 
-````python
 ```python
+
 import os
 import csv
 import pandas as pd
@@ -277,4 +277,4 @@ if __name__ == '__main__':
     print(output1.shape) # torch.Size([2, 10, 20])
     print(output2.shape) # torch.Size([2, 10, 768])
 
-````
+```

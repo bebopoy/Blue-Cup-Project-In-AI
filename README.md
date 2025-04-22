@@ -1110,6 +1110,7 @@ torchvision.transforms.ToPILImage(mode=None)()
 
 ## accurate precise recall
 
+https://blog.csdn.net/opensourcesdr/article/details/73334302
 ![alt text](assets/Readme/image-1.png)
 
 ## 根据图搭建 torch tensorflow 模型
@@ -1146,6 +1147,75 @@ class LeNet5(nn.Module):
         temp_flateen =torch.flatten(temp, start_dim=1)
         out = self.connect(temp_flateen)
         return temp, out
+```
+
+## 点积注意力
+
+![alt text](assets/Readme/image-2.png)
+
+```python
+import torch
+from torch import nn, Tensor
+import numpy as np
+from typing import Tuple
+
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self):
+        super(ScaledDotProductAttention, self).__init__()
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, Q: Tensor, K: Tensor, V: Tensor)->Tuple[Tensor, Tensor]:
+        #TODO
+        qkt = torch.matmul(Q, K.transpose(-1,-2))
+        scale = np.sqrt(K.size(-1))
+        scores = qkt / scale
+        output1 = self.softmax(scores)
+
+        output2 = torch.matmul(output1, V)
+        return output1, output2
+
+if __name__ == '__main__':
+    scaled_dot_product_attn = ScaledDotProductAttention()
+    d_model = 768
+    batch_size, tgt_len, src_len = 2, 10, 20
+    Q, K, V = torch.rand((batch_size, tgt_len, d_model)), torch.rand((batch_size, src_len, d_model)), torch.rand((batch_size, src_len, d_model))
+
+    output1, output2 = scaled_dot_product_attn(Q, K, V)
+    print(output1.shape) # torch.Size([2, 10, 20])
+    print(output2.shape) # torch.Size([2, 10, 768])
+```
+
+## 优化器调参 SGD
+
+```python
+import torch
+from torch.optim import Adam, SGD
+from typing import Tuple
+
+def rosenbrock_function(x: torch.Tensor, y: torch.Tensor, a: float=1., b: float=100.) -> torch.Tensor:
+
+    return (a - x)**2 + b * (y - x**2)**2
+
+def find_rosenbrock_minimum(max_iter: int) -> Tuple[float, float, float, SGD]:
+
+    x = torch.tensor([0.0], requires_grad=True)
+    y = torch.tensor([0.0], requires_grad=True)
+
+    #TODO
+    opt = SGD([x, y],lr=1e-3, momentum=0.9)
+    for i in range(max_iter):
+        opt.zero_grad()
+        loss = rosenbrock_function(x, y)
+        loss.backward()
+        opt.step()
+    loss = rosenbrock_function(x, y)
+    return x.item(), y.item(), loss, opt
+
+
+if __name__ == "__main__":
+    x_min, y_min, f_min, sgd = find_rosenbrock_minimum(max_iter=1000)
+    print(f"局部最小值点：x = {x_min}, y = {y_min}, 对应的函数值：f(x, y) = {f_min}, SGD 参数：{sgd.state_dict()}")
+
 ```
 
 ## squeeze 与 unsqueeze
