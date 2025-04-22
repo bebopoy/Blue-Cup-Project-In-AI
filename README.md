@@ -327,7 +327,7 @@ link = html.find_all('ul',class_='submenu')
 link.text
 ```
 
-打开 html 文件
+打开 html 文件，#！一定要先去 open 文件
 
 ```python
 from bs4 import BeautifulSoup
@@ -1134,7 +1134,7 @@ class LeNet5(nn.Module):
         nn.Sigmoid(),
         nn.AvgPool2d(kernel_size=2, stride=2),
         )
-        self.w, self.h = (((W-4)/2)-4)/2, (((H-4)/2)-4)/2
+        self.w, self.h = int((((W-4)/2)-4)/2), int((((H-4)/2)-4)/2)
         self.connect = nn.Sequential(
         nn.Linear(in_features=16*self.h*self.w, out_features=120),
         nn.Linear(in_features=120, out_features=84),
@@ -1147,3 +1147,15 @@ class LeNet5(nn.Module):
         out = self.connect(temp_flateen)
         return temp, out
 ```
+
+## squeeze 与 unsqueeze
+
+https://blog.csdn.net/Caesar6666/article/details/109822580
+
+## 常见数据格式
+
+numpy.transpose(0,3,1,2)
+
+- onnxruntime : NCHW
+- PyTorch : NCHW
+- TensorFlow : NHWC
