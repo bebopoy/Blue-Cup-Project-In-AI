@@ -147,8 +147,8 @@ def f1_score(y_test, y_pred):
 def train():
     file_path ='xx.csv'
     data = pd.read_csv(file_path)
-    X = data.drop('target',axis=1).values
-    y = data['target'.values]
+    X = data.drop('target',axis=1).values #!axis轴方向
+    y = data['target'].values
     X = standardization(X)
     X_train, X_test, y_train, y_test =tran_test_split(X, y,test_size=0.2, random_state=42)
     model = SVC()
@@ -165,16 +165,16 @@ def train():
 ```python
 import torch
 import torch.utils.benchmark as benchmark
-import torchvision.models as modes
+import torchvision.models as models
 
 def resnet_predict_time(input, model_path, n):
     # 加载 ResNet-18 模型
     resnet_model = models.resnet18()
     resnet_model.load_state_dict(torch.load(model_path))
     resnet_model.eval()
-    resnew_bm =benchmark.Timer(stmt='resnet_model(input)',globals={'resnet_model':resnet_model,'input':input})
+    resnew_bm =benchmark.Timer(stmt='resnet_model(input)',globals={'resnet_model':resnet_model,'input':input}) #!stmt
     # 预测 n 次的平均时间
-    resnet_time = resnet_bm.timeit(n).mean
+    resnet_time = resnet_bm.timeit(n).mean #!timeit
     return resnet_time
 ```
 
@@ -195,8 +195,6 @@ onnxruntime 推理的输入是{}
 onnx_model = onnx.load(xxxx.onnx")
 onnx.checker.check_model(onnx_model)
 ```
-
-<mark> 标记 </mark>
 
 1 计时器引入
 
@@ -354,11 +352,11 @@ new_path = os.path.join(str_1,str_2)
 import numpy as np
 
 - 平均数
-  np.mean(axis=-1) -1 是最后一维
+  np.mean(axis=-1,keepdims=True) -1 是最后一维
 - 标准差
-  np.std(axis=-1)
+  np.std(axis=-1,keepdims=True)#!keepdims
 - 方差
-  np.var(axis=-1)
+  np.var(axis=-1,keepdims=True)
 
 ### 范数
 
@@ -396,11 +394,11 @@ def calc_tfidf(words, corpus):
 1.缩放/插值
 
 ```python
-old_weight, old_width = image.shape
+old_height, old_width = image.shape
 
 # 先计算尺寸变化比例
 width_scale = new_width/old_width
-weight_scale = new_weight/old_weight
+height_scale = new_weight/old_height
 
 # 创新的图像
 new_image = np.empty((new_height, new_width),dtype = np.uint8)
@@ -1108,4 +1106,44 @@ torchvision.transforms.Pad(padding, fill=0, padding_mode='constant')()
 # 功能：将shape为(C,H,W)的Tensor或shape为(H,W,C)的numpy.ndarray转换成PIL.Image
 torchvision.transforms.ToPILImage(mode=None)()
 
+```
+
+## accurate precise recall
+
+![alt text](assets/Readme/image-1.png)
+
+## 根据图搭建 torch tensorflow 模型
+
+![alt text](assets/难顶的模拟赛/image.png)
+
+```python
+
+import torch
+import torch.nn as nn
+class LeNet5(nn.Module):
+
+    def __init__(self, num_classes: int = 10, in_channels: int=1, H: int=32, W: int=32)->None:
+        super(LeNet5, self).__init__()
+        #TODO
+        self.conv = nn.Sequential(
+        nn.Conv2d(in_channels=in_channels, out_channels=6,kernel_size=5, stride=1),
+        nn.Sigmoid(),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+
+        nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1),
+        nn.Sigmoid(),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.w, self.h = (((W-4)/2)-4)/2, (((H-4)/2)-4)/2
+        self.connect = nn.Sequential(
+        nn.Linear(in_features=16*self.h*self.w, out_features=120),
+        nn.Linear(in_features=120, out_features=84),
+        nn.Linear(in_features=84, out_features=num_classes)
+        )
+    def forward(self, x: Tensor)->Tuple[Tensor, Tensor]:
+        #TODO
+        temp = self.conv(x)
+        temp_flateen =torch.flatten(temp, start_dim=1)
+        out = self.connect(temp_flateen)
+        return temp, out
 ```

@@ -45,3 +45,8 @@ numpy 创建一个视图 view(),reshape(x,y)，无法隔离 与 copy 新建一�
 
 https://blog.csdn.net/weixin_44544687/article/details/124703861
 深度学习中的 Tensor 数据格式（N,C,H,W） 很有意义
+
+- https://blog.csdn.net/m0_52650517/article/details/120662062
+
+- https://blog.csdn.net/weixin_42426841/article/details/129903800?fromshare=blogdetail&sharetype=blogdetail&sharerId=129903800&sharerefer=PC&sharesource=2301_78911814&sharefrom=from_link
+  PyTorch | torchvision.transforms 常用方法详解
