@@ -1218,6 +1218,175 @@ if __name__ == "__main__":
 
 ```
 
+## 分组推理，按照尺寸分组
+
+```python
+import onnxruntime as ort
+import numpy as np
+from typing import Dict, Tuple, List
+from collections import defaultdict
+
+
+def group_images_by_size(images_dict: Dict[str, np.ndarray]) -> Dict[Tuple[int, int], List[Tuple[str, np.ndarray]]]:
+    #TODO
+    group_images = defaultdict(list)
+    for image_name, img in images_dict:
+        h, w, _ = img.shape
+        img_shape = (h, w)
+        group_images[img_shape].append((image_name, img))
+    return group_images
+
+def grouped_inference(images_dict: Dict[str, np.ndarray], filename: str) -> Dict[str, np.ndarray]:
+    grouped_images = group_images_by_size(images_dict)
+    print([(size, len(images), images[0][1].shape) for size, images in grouped_images.items()])
+    #TODO
+    ort_session = onnxruntime.InferenceSession(filename)
+    result = {}
+    for (h, w), img_group in grouped_images.items():
+        batch = np.array([img_tensor for _ ,img_tensor in img_group]).transpose(0,3,1,2)
+
+        input_name = ort_session.get_inputs()[0].name
+        output_name = ort_session.get_outputs()[0].name
+        batch_output = ort_session.run([output_name], {input_name:batch})[0]
+
+        for (image_name, _), tensor_out in zip(img_group,batch_output)
+            result[image_name] = tensor_out.transpose(1,2,0)
+
+    return result
+
+def main() -> None:
+    filename = 'srcnn.onnx'
+    images = {f'image{i}': np.random.random([128*(i%3+1), 128*(i%2+1), 3]).astype(np.float32) for i in range(16)}
+    print([(file, image.shape) for file, image in images.items()])
+    images = grouped_inference(images, filename)
+    print([(file, image.shape) for file, image in images.items()])
+
+
+if __name__ == '__main__':
+    main()
+```
+
+## 文本链式推理
+
+embedding.batch_encode_plus() 看手册得到的
+
+```python
+import pickle
+from typing import List, Tuple
+import jieba
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import onnxruntime as ort
+
+
+class TextSimilarityRecommender:
+    def __init__(self, model_path: str, tokenizer_path: str):
+        #TODO
+        self.session = ort.InferenceSession(model_path)
+        #!
+        with open(tokenizer_path, 'rb') as tokenizer_file:
+            self.tokenizer = puckle.load(tokenizer_file)
+
+    def embed_texts(self, texts: List[str]) -> np.ndarray:
+        #TODO
+        input = self.tokenizer.batch_encode_plus(texts, pad_to_max_length = True)
+        onnx_inputs = {
+            'input_ids':inputs['input_ids'],
+            'attention_mask':inputs['attention_mask']
+            }
+        onnx_output = self.session.run(['last_hidden_state'],onnx_inputs)[0]
+        return onnx_output
+
+    def find_most_similar(self, query: str, corpus: List[str]) -> Tuple[str, float]:
+        #TODO
+        embeddings = self.embed_texts([query]+corpus)
+        query_embedding = embeddings[0]
+        corpus_embedding = embeddings[1:]
+
+        sin = cosine_similarity([query_embedding], corpus_embedding)
+        best_index = np.argmax(sin)
+        return corpus[best_index], sin[best_index]
+
+    def recommend(self, query: str, corpus: List[str]) -> str:
+        most_similar_text, similarity = self.find_most_similar(query, corpus)
+        print(f"{most_similar_text=}, {similarity=}")
+        highlighted_text = highlight_similar_words(query, most_similar_text)
+        return highlighted_text
+
+
+def highlight_similar_words(text1: str, text2: str) -> str:
+    #TODO
+    word1 = jieba.lcut(text1)
+    word2 = jieba.lcut(text2)
+    result_text = ''
+    for word in word2:
+        if word in word1:
+            result_text += ('<b>'+word+'</b>')
+        else:
+            result_text += word
+    return result_text
+
+
+if __name__ == '__main__':
+    recommender = TextSimilarityRecommender("embedding.onnx", "embedding.pkl")
+    corpus = ["北京今日天气：阴", "蓝桥杯赛事安排"]
+    query = "北京今日天气怎么样"
+    recommendation = recommender.recommend(query, corpus)
+    print(recommendation)
+```
+
+## MLM 转换与推理
+
+bert-base-chinese 模型的组成部分，该模型是 BERT（Bidirectional Encoder Representations from Transformers）在中文上的预训练版本。
+README.md: 模型的说明文档。
+config.json: BERT 模型的配置参数，如隐藏层大小、层数、注意力头的数量等。
+.gitattributes: Git 配置文件。
+pytorch_model.bin: 预训练权重的二进制文件。
+tokenizer.json: 分词器（Tokenizer）的状态，包含了将原始文本转化为模型输入所需的所有信息，如词汇表索引、特殊标记等。
+tokenizer_config.json: 分词器的配置选项，指定了分词规则、是否保留空白字符、未知标记的行为等。
+vocab.txt: 这是 BERT 模型的词汇表文件，每一行代表一个 token。
+模型使用方法如下：
+
+```python
+from transformers import AutoTokenizer, AutoModelWithLMHead
+from transformers import pipeline
+
+tokenizer = AutoTokenizer. from_pretrained ("/home/project/09/bert-base-chinese")
+model = AutoModelWithLMHead. from_pretrained ("/home/project/09/bert-base-chinese")
+
+fill_mask = pipeline("fill-mask", model=model, tokenizer=tokenizer)
+text = "巴黎是 [MASK] 国的首都。"
+result = fill_mask(text)
+print(result)
+```
+
+```python
+from typing import List
+import torch
+from transformers import AutoTokenizer, AutoModelWithLMHead
+import onnxruntime as ort
+
+
+def convert(model_path: str, tokenizer_path: str, onnx_path: str) -> None:
+    #TODO
+    model = AutoModelWithLMHead.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+
+
+def inference(text: str, onnx_path: str, tokenizer_path: str) -> List[str]:
+    #TODO
+
+
+if __name__ == '__main__':
+    model_path = "/home/project/09/bert-base-chinese"
+    tokenizer_path = "/home/project/09/bert-base-chinese"
+    onnx_path = "/home/project/09/bert_base_chinese.onnx"
+    convert(model_path, tokenizer_path, onnx_path)
+    text = "巴黎是 [MASK] 国的首都。"
+    preds = inference(text, onnx_path, tokenizer_path)
+    print(preds)
+```
+
 ## squeeze 与 unsqueeze
 
 https://blog.csdn.net/Caesar6666/article/details/109822580

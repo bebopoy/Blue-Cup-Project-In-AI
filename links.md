@@ -154,12 +154,30 @@ import onnxruntime as ort
 class TextSimilarityRecommender:
     def __init__(self, model_path: str, tokenizer_path: str):
         #TODO
+        self.session = ort.InferenceSession(model_path)
+        #!
+        with open(tokenizer_path, 'rb') as tokenizer_file:
+            self.tokenizer = puckle.load(tokenizer_file)
 
     def embed_texts(self, texts: List[str]) -> np.ndarray:
         #TODO
+        input = self.tokenizer.batch_encode_plus(texts, pad_to_max_length = True)
+        onnx_inputs = {
+            'input_ids':inputs['input_ids'],
+            'attention_mask':inputs['attention_mask']
+            }
+        onnx_output = self.session.run(['last_hidden_state'],onnx_inputs)[0]
+        return onnx_output
 
     def find_most_similar(self, query: str, corpus: List[str]) -> Tuple[str, float]:
         #TODO
+        embeddings = self.embed_texts([query]+corpus)
+        query_embedding = embeddings[0]
+        corpus_embedding = embeddings[1:]
+
+        sin = cosine_similarity([query_embedding], corpus_embedding)
+        best_index = np.argmax(sin)
+        return corpus[best_index], sin[best_index]
 
     def recommend(self, query: str, corpus: List[str]) -> str:
         most_similar_text, similarity = self.find_most_similar(query, corpus)
@@ -170,6 +188,15 @@ class TextSimilarityRecommender:
 
 def highlight_similar_words(text1: str, text2: str) -> str:
     #TODO
+    word1 = jieba.lcut(text1)
+    word2 = jieba.lcut(text2)
+    result_text = ''
+    for word in word2:
+        if word in word1:
+            result_text += ('<b>'+word+'</b>')
+        else:
+            result_text += word
+    return result_text
 
 
 if __name__ == '__main__':
@@ -212,13 +239,30 @@ from collections import defaultdict
 
 def group_images_by_size(images_dict: Dict[str, np.ndarray]) -> Dict[Tuple[int, int], List[Tuple[str, np.ndarray]]]:
     #TODO
-
+    group_images = defaultdict(list)
+    for image_name, img in images_dict:
+        h, w, _ = img.shape
+        img_shape = (h, w)
+        group_images[img_shape].append((image_name, img))
+    return group_images
 
 def grouped_inference(images_dict: Dict[str, np.ndarray], filename: str) -> Dict[str, np.ndarray]:
     grouped_images = group_images_by_size(images_dict)
     print([(size, len(images), images[0][1].shape) for size, images in grouped_images.items()])
     #TODO
+    ort_session = onnxruntime.InferenceSession(filename)
+    result = {}
+    for (h, w), img_group in grouped_images.items():
+        batch = np.array([img_tensor for _ ,img_tensor in img_group]).transpose(0,3,1,2)
 
+        input_name = ort_session.get_inputs()[0].name
+        output_name = ort_session.get_outputs()[0].name
+        batch_output = ort_session.run([output_name], {input_name:batch})[0]
+
+        for (image_name, _), tensor_out in zip(img_group,batch_output)
+            result[image_name] = tensor_out.transpose(1,2,0)
+
+    return result
 
 def main() -> None:
     filename = 'srcnn.onnx'
