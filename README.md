@@ -1149,6 +1149,49 @@ class LeNet5(nn.Module):
         return temp, out
 ```
 
+```python
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+class LeNet5(tf.keras.Model):
+    def __init__(self, num_classes: int = 10, input_shape=(32, 32, 1)):
+        super(LeNet5, self).__init__()
+
+        # Convolutional and Pooling layers
+        self.conv = models.Sequential([
+            layers.Conv2D(6, kernel_size=5, strides=1, activation='sigmoid', input_shape=input_shape),
+            layers.AvgPool2D(pool_size=2, strides=2),
+            layers.Conv2D(16, kernel_size=5, strides=1, activation='sigmoid'),
+            layers.AvgPool2D(pool_size=2, strides=2)
+        ])
+
+        # Calculate the size of the flattened output from the convolution layers
+        self.w = (input_shape[0] - 4) // 2 - 4 // 2  # Width after pooling
+        self.h = (input_shape[1] - 4) // 2 - 4 // 2  # Height after pooling
+
+        # Fully connected layers
+        self.dense = models.Sequential([
+            layers.Flatten(),
+            layers.Dense(120, activation='relu'),
+            layers.Dense(84, activation='relu'),
+            layers.Dense(num_classes)
+        ])
+
+    def call(self, inputs, training=False):
+        # Pass through convolutional layers
+        x = self.conv(inputs)
+
+        # Flatten the output and pass through dense layers
+        x = self.dense(x)
+
+        return x
+
+# Example to create the model
+model = LeNet5(num_classes=10, input_shape=(32, 32, 1))
+model.summary()
+
+```
+
 ## 点积注意力
 
 ![alt text](assets/Readme/image-2.png)
